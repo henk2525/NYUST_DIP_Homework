@@ -4,6 +4,8 @@
 #include <stdio.h>
 
 #define M_PI 3.14159265358979323846264338327
+#define MAX_BRIGHTNESS 255
+
 
 int FindMedium(int data[9])   //找中間值
 {
@@ -52,16 +54,18 @@ void Gaussian_LPF(int r[1024][1024], int R[1024][1024], int& width, int& height,
 	convolution(r, R, Gaussian_kernel, width, height);
 }
 
-void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int& height,int tmin, int tmax, float sigma) {
+void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int& height, int tmin, int tmax, float sigma) {
 
-	int after_x[1024][1024], after_y[1024][1024];
+	int after_x[1024][1024] = { 0 }, after_y[1024][1024] = { 0 };
+	int nms[1024][1024] = { 0 };
 
 
 	Gaussian_LPF(r, R, width, height, sigma);
+	save_bmp((char*)"picture\\house_step1.bmp", r, r, r);
 
 	float Gx[] = { -1, 0, 1,
 				   -2, 0, 2,
-			       -1, 0, 1 };
+				   -1, 0, 1 };
 	convolution(after_x, r, Gx, width, height);
 
 	float Gy[] = { 1, 2, 1,
@@ -72,11 +76,69 @@ void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int&
 	for(int x=1;x<width;x++)
 		for (int y = 1;y < height;y++)
 			r[x][y] = hypot(after_x[x][y], after_y[x][y]);
+	save_bmp((char*)"picture\\house_step2.bmp", r, r, r);
 
 
+	// Non-maximum suppression
+	for(int x=1;x < width-1;x++)
+		for (int y = 1;y < height-1;y++) {
+			float dir = (float)(fmod(atan2(after_y[x][y], after_x[x][y]) + M_PI,M_PI) / M_PI) * 8;	//atan2() return -pi~pi ,so add pi
+			if (((dir <= 1 || dir > 7) && r[x][y] > r[x][y + 1] && r[x][y] > r[x][y - 1]) ||			// 0 deg
+				((dir > 1 && dir <= 3) && r[x][y] > r[x - 1][y + 1] && r[x][y] > r[x + 1][y - 1]) ||	// 45 deg		nw	nn  ne
+				((dir > 3 && dir <= 5) && r[x][y] > r[x + 1][y] && r[x][y] > r[x - 1][y]) ||			// 90 deg		ww	**	ee
+				((dir > 5 && dir <= 7) && r[x][y] > r[x + 1][y + 1] && r[x][y] > r[x - 1][y - 1]))		// 135 deg		sw	sa	se
+				nms[x][y] = r[x][y];
+			else
+				nms[x][y] = 0;
+		}
+	save_bmp((char*)"picture\\house_step3.bmp", nms, nms, nms);
+
+	//歸零
+	for (int x = 0;x < width;x++)
+		for (int y = 0;y < height;y++)
+			r[x][y] = 0;
 
 
-	
+	int edges[1024 * 1024] = { 0 };
+	int c = 1;
+
+	for (int x = 1;x<width-1;x++)
+		for (int y = 1;y < height-1;y++) {
+			if (nms[x][y] >= tmax && r[x][y] == 0) { // trace edges
+				r[x][y] = MAX_BRIGHTNESS;
+				int nedges = 1;
+				edges[0] = c;
+
+				do {
+					nedges--;
+					int t = edges[nedges];
+
+					int nbs[8];  //// neighbours
+					nbs[0] = t - width;  // nn
+					nbs[1] = t + width;  // ss
+					nbs[2] = t + 1;      // ww
+					nbs[3] = t - 1;      // ee
+					nbs[4] = nbs[0] + 1; // nw
+					nbs[5] = nbs[0] - 1; // ne
+					nbs[6] = nbs[1] + 1; // sw
+					nbs[7] = nbs[1] - 1; // se
+
+					for (int i = -1; i < 2; i++)
+						for (int j = -1; j < 2; j++)
+							if (i == 0 && j == 0)
+								continue;
+							else
+								if (nms[x + i][y + j] >= tmin && r[x + i][y + j] == 0) {
+									r[x + i][y + j] = MAX_BRIGHTNESS;
+									edges[nedges] = nbs[3*(i+1)+(j+1)];
+									nedges++;
+								}
+				} while (nedges > 0);
+			}
+			c++;
+		}
+
+	save_bmp((char*)"picture\\house_step4.bmp", r, r, r);
 }
 
 void HistogramEqualization(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第三題

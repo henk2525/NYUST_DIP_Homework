@@ -81,9 +81,9 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <HeapReserveSize>10240000</HeapReserveSize>
+      <HeapReserveSize>102400000</HeapReserveSize>
       <HeapCommitSize>10240000</HeapCommitSize>
-      <StackReserveSize>10240000</StackReserveSize>
+      <StackReserveSize>102400000</StackReserveSize>
       <StackCommitSize>10240000</StackCommitSize>
     </Link>
   </ItemDefinitionGroup>
