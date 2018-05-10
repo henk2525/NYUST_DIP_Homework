@@ -315,7 +315,7 @@ void save_bmp_image(char filename[], MyBITMAP *bmp)
 		printf("Couldn't find file %s.\n",filename);
 		exit(1);
 	}
-
+	
 	fwrite(&(bmp->file_header.buf), sizeof(char), 14, fp);
 
 	fwrite(&(bmp->info_header.buf), sizeof(char), 40, fp);

@@ -29,15 +29,63 @@ void convolution(int r[1024][1024], int R[1024][1024], float kernel[9], int& wid
 			int count = 0;
 			for(int k_i = -1; k_i<2; k_i++)
 				for (int k_j = -1; k_j < 2; k_j++) {
-					r[i][j] += R[i - k_i][j - k_j] * kernel[count];
+					r[i][j] +=(int) R[i - k_i][j - k_j] * kernel[count];
 					count++;
 				}
 		}
 }
 
-void Gaussian_LPF(int r[1024][1024], int R[1024][1024], int& width, int& height, float sigma) {
+void MedianFiltering(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第二題
+{
+	int data[9];
+	int x, y, i, j;
+
+	for (i = 0; i < width; i++)
+	{
+		for (j = 0; j < height; j++)
+		{
+			for (x = -1;x < 2;x++)
+				for (y = -1;y < 2;y++)
+					data[3 * (x + 1) + (y + 1)] = R[i + x][j + y];
+			r[i][j] = FindMedium(data);
+		}
+	}
+}
+
+void Rotate(int r[1024][1024], int R[1024][1024], int& width, int& height, float angle) {
 
 	int i, j;
+	double x, y;			
+	int p1, p2;
+	int half_width = width / 2;
+	int half_height = height/ 2;
+
+	int after_i, after_j;
+	for (i = 0; i <= width; i++)
+		for (j = 0; j <= height; j++) {
+
+			after_i = i - half_width;
+			after_j = j - half_height;
+			x = after_i * cos(angle*M_PI / 180) + after_j * sin(angle*M_PI / 180) + half_width;
+			y = after_i * sin(angle*M_PI / 180)*(-1) + after_j * cos(angle*M_PI / 180) + half_height;
+
+
+			if (x>0 && x<width && y>0 && y<height) {		//判斷是否對應到之原圖有像素點
+
+				p1 = R[int(x)][int(y)] * abs((int) y - int(y + 1)) +
+					R[int(x)][int(y + 1)] * abs((int) y - int(y));
+
+				p2 = R[int(x + 1)][int(y)] * abs((int) y - int(y + 1)) +
+					R[int(x + 1)][int(y + 1)] * abs((int) y - int(y));
+
+				r[i][j] = p1 * abs((int) x - int(x + 1)) + p2 * abs((int) x - int(x));
+			}
+		}
+}
+
+void Gaussian_LPF(int r[1024][1024], int R[1024][1024], int& width, int& height, float sigma) {
+				  
+	int i, j;	  
 	float Gaussian_kernel[9],total=0;
 	int count=0;
 	//高斯矩陣
@@ -49,7 +97,7 @@ void Gaussian_LPF(int r[1024][1024], int R[1024][1024], int& width, int& height,
 		}
 	}
 	for (count = 0; count < 9;count++) {
-			Gaussian_kernel[count] /= total;
+		Gaussian_kernel[count] /= total;
 	}
 	convolution(r, R, Gaussian_kernel, width, height);
 }
@@ -200,27 +248,9 @@ void ErrorDiffusion(int r[1024][1024], int R[1024][1024], int& width, int& heigh
 				continue;
 			else
 				R[i - 1][j + 1] = R[i - 1][j + 1] + (int)round(3 * error / 16);
-			R[i][j + 1] = R[i][j + 1] + (int)round(5 * error / 16);
-			R[i + 1][j + 1] = R[i + 1][j + 1] + (int)round(1 * error / 16);
+				R[i][j + 1] = R[i][j + 1] + (int)round(5 * error / 16);
+				R[i + 1][j + 1] = R[i + 1][j + 1] + (int)round(1 * error / 16);
 		}
 	}
 
 }
-
-void MedianFiltering(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第二題
-{
-	int data[9];
-	int x, y, i, j;
-
-	for (i = 0; i < width; i++)
-	{
-		for (j = 0; j < height; j++)
-		{
-			for (x = -1;x < 2;x++)
-				for (y = -1;y < 2;y++)
-					data[3 * (x + 1) + (y + 1)] = R[i + x][j + y];
-			r[i][j] = FindMedium(data);
-		}
-	}
-}
-
