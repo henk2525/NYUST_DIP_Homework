@@ -49,9 +49,6 @@
     <Image Include="picture\framed_airplane.bmp">
       <Filter>資源檔\picture</Filter>
     </Image>
-    <Image Include="picture\framed_lena_color_256.bmp">
-      <Filter>資源檔\picture</Filter>
-    </Image>
     <Image Include="picture\house.bmp">
       <Filter>資源檔\picture</Filter>
     </Image>

@@ -137,7 +137,6 @@
     <Image Include="picture\cameraman.bmp" />
     <Image Include="picture\coins.bmp" />
     <Image Include="picture\framed_airplane.bmp" />
-    <Image Include="picture\framed_lena_color_256.bmp" />
     <Image Include="picture\house.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

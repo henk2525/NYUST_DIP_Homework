@@ -35,7 +35,7 @@ void convolution(int r[1024][1024], int R[1024][1024], float kernel[9], int& wid
 		}
 }
 
-void MedianFiltering(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第二題
+void MedianFiltering(int r[1024][1024], int R[1024][1024], int& width, int& height)
 {
 	int data[9];
 	int x, y, i, j;
@@ -57,6 +57,7 @@ void Rotate(int r[1024][1024], int R[1024][1024], int& width, int& height, float
 	int i, j;
 	double x, y;			
 	int p1, p2;
+
 	int half_width = width / 2;
 	int half_height = height/ 2;
 
@@ -128,8 +129,8 @@ void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int&
 
 
 	// Non-maximum suppression
-	for(int x=1;x < width-1;x++)
-		for (int y = 1;y < height-1;y++) {
+	for(int x=0;x < width;x++)
+		for (int y = 0;y < height;y++) {
 			float dir = (float)(fmod(atan2(after_y[x][y], after_x[x][y]) + M_PI,M_PI) / M_PI) * 8;	//atan2() return -pi~pi ,so add pi
 			if (((dir <= 1 || dir > 7) && r[x][y] > r[x][y + 1] && r[x][y] > r[x][y - 1]) ||			// 0 deg
 				((dir > 1 && dir <= 3) && r[x][y] > r[x - 1][y + 1] && r[x][y] > r[x + 1][y - 1]) ||	// 45 deg		nw	nn  ne
@@ -150,8 +151,8 @@ void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int&
 	int edges[1024 * 1024] = { 0 };
 	int c = 1;
 
-	for (int x = 1;x<width-1;x++)
-		for (int y = 1;y < height-1;y++) {
+	for (int x = 0;x<width;x++)
+		for (int y = 0;y < height;y++) {
 			if (nms[x][y] >= tmax && r[x][y] == 0) { // trace edges
 				r[x][y] = MAX_BRIGHTNESS;
 				int nedges = 1;
@@ -189,7 +190,47 @@ void canny_edge_detection(int r[1024][1024], int R[1024][1024], int& width, int&
 	save_bmp((char*)"picture\\house_step4.bmp", r, r, r);
 }
 
-void HistogramEqualization(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第三題
+void Hough_Line_Transform(int r[1024][1024], int R[1024][1024], int& width, int& height) {
+
+	int Accumulator[800][181] = { 0 };
+	int s,i,j;
+	int angle;
+
+	double angle_new;
+	for (i = 2; i < width - 2; i++)
+		for (j = 2; j < height- 2; j++) {
+			if (R[i][j] == 255) {
+				for (angle = -90; angle < 91; angle++) {
+					angle_new = angle * M_PI / 180;
+
+					s = round(i * cos(angle_new) + j * sin(angle_new));
+					Accumulator[s][angle+90]++;
+				}
+			}
+			else
+				continue;
+		}
+
+
+	for (s = 0; s < 800; s++) {
+		for (angle = -90; angle < 91; angle++) {
+			if (Accumulator[s][angle+90] > 80) {
+//				printf("%d %d %d\n",Accumulator[s][angle], angle, s);
+				angle_new = angle * M_PI / 180;
+				for (i = 2; i < width-2; i++) {
+					for (j = 2; j < height-2; j++)
+						if ( (s == round(i * cos(angle_new) + j * sin(angle_new))) && R[i][j]==255)
+							r[i][j] = 255;
+				}
+			}
+			else
+				continue;
+		}
+	}
+}
+
+
+void HistogramEqualization(int r[1024][1024], int R[1024][1024], int& width, int& height) 
 {
 	int count[256][2] = { 0 };
 	int i, j;
@@ -232,7 +273,7 @@ void HistogramEqualization(int r[1024][1024], int R[1024][1024], int& width, int
 			r[i][j] = (int)round((float)(count_total[R[i][j]][1] - min) / (width * height - min) * 255);
 }
 
-void ErrorDiffusion(int r[1024][1024], int R[1024][1024], int& width, int& height)  //第一題
+void ErrorDiffusion(int r[1024][1024], int R[1024][1024], int& width, int& height)
 {
 	int i, j, error;
 	for (i = 0; i < width; i++)
@@ -254,3 +295,54 @@ void ErrorDiffusion(int r[1024][1024], int R[1024][1024], int& width, int& heigh
 	}
 
 }
+
+void rgb2hsv(int H[1024][1024], float S[1024][1024], float V[1024][1024],
+	int R[1024][1024], int G[1024][1024], int B[1024][1024], int& width, int& height) 
+{
+	float temp, delta; 
+	float max, min;
+	float r, g, b;
+	int error=0;
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+
+			//normalize
+			r = (float)R[x][y]/255;
+			g = (float)G[x][y]/255;
+			b = (float)B[x][y]/255;
+
+			temp = (r >= g) ? r : g;
+			max = (temp >= b) ? temp : b;
+			temp = (r <= g) ? r : g;
+			min = (temp <= b) ? temp : b;
+			
+			V[x][y] = max;
+			delta = max - min;
+			if (max != 0)
+				S[x][y] = delta / max;
+			else
+				S[x][y] = 0;
+
+			if (max == min)
+				H[x][y] = 0;
+			else if (r == max && g >= b)
+				H[x][y] = round((g - b) / delta * 60);
+			else if (r == max && g <= b)
+				H[x][y] = round((g - b) / delta * 60) + 360;
+			else if (g == max)
+				H[x][y] = round((b - r) / delta * 60) + 120;
+			else if (b == max)
+				H[x][y] = round((r - g) / delta * 60) + 240;
+			else
+				error++;
+		}
+	}
+	printf("rgb2hsv error: %d\n", error);
+}
+
+void erosion(int r[1024][1024], int R[1024][1024], int* structure, int width, int height, int size_x, int size_y) {
+	int x=0, y=0;
+	for (y = 0;y < size_y;y++)
+		for (x = 0; x < size_x;x++)
+			printf("%d\n", structure[x+y*size_x]);
+}		
