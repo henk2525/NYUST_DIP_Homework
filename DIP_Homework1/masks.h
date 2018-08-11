@@ -15,4 +15,10 @@ void ErrorDiffusion(int r[1024][1024], int R[1024][1024], int& width, int& heigh
 void rgb2hsv(int H[1024][1024], float S[1024][1024], float V[1024][1024],
 	int R[1024][1024], int G[1024][1024], int B[1024][1024], int& width, int& height);
 
-void erosion(int r[1024][1024], int R[1024][1024], int* structure, int width, int height, int size_x, int size_y);
+void Butterworth_LF(int r[1024][1024], int R[1024][1024], float D0, int n, int width, int height);
+
+void Butterworth_HF(int r[1024][1024], int R[1024][1024], float D0, int n, int width, int height);
+
+void dilation(int R[1024][1024], int width, int height); //ÂX±i
+
+void erosion(int R[1024][1024], int width, int height);  //«I»k

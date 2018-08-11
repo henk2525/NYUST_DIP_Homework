@@ -34,8 +34,7 @@ int main(int argc, char *argv[])
 	//		}
 	//	}
 	//}
-	//save_bmp((char*)"out\\skin_det_1_new.bmp", r, g, b);
-
+	//save_bmp((char*)"out\\skin_det_1_initial.bmp", r, g, b);
 
 
 	//第一題 (2)
@@ -53,14 +52,39 @@ int main(int argc, char *argv[])
 	//save_bmp((char*)"out\\skin_det_2_new.bmp", r, g, b);
 	
 
+	//第二題_lowpass
+	//int i, j;
+	//int n=2;
+	//float D0 = 10;
+	//open_bmp((char *)"picture\\cameraman.bmp", R, R, R, width, height);
+	//Butterworth_LF(r, R, D0, n, width, height);
+	//save_bmp((char *)"out//cam_low_n=2_d0=10.bmp", r, r, r);
+
+
+	//第二題_highpass
+	//int i, j;
+	//int n = 2;
+	//float D0 = 50;
+	//open_bmp((char *)"picture\\lena.bmp", R, R, R, width, height);
+	//Butterworth_HF(r, R, D0, n, width, height);
+	//save_bmp((char *)"out//lena_high_n=2_d0=50.bmp", r, r, r);
+	
+
+
 	//第三題
-	open_bmp((char*)"picture\\skin_det_2.bmp", R, R, R, width, height);
-	int str[25];
-	for (int i = 0;i < 25;i++)
-		str[i] = i;
-	erosion(r,R,str,width,height,5,5);
-
-
+	//open_bmp((char*)"picture\\noise_remov_morph_gray.bmp", R, R, R, width, height);
+    //
+	//erosion(R, width, height);
+	//save_bmp((char*)"out\\noise_remov_morph_gray_1.bmp", R, R, R);
+	//erosion(R, width, height);
+	//save_bmp((char*)"out\\noise_remov_morph_gray_2.bmp", R, R, R);
+	//dilation(R, width, height);
+	//save_bmp((char*)"out\\noise_remov_morph_gray_3.bmp", R, R, R);
+	//dilation(R, width, height);
+	//save_bmp((char*)"out\\noise_remov_morph_gray_4.bmp", R, R, R);
+	//dilation(R, width, height);
+	//save_bmp((char*)"out\\noise_remov_morph_gray_new.bmp", R, R, R);
+	
 
 
 	printf("Job Finished!\n");

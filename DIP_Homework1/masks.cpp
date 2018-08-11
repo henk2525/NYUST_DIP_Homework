@@ -2,6 +2,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "FFT1.c"
+#include "FFT2.c"
 
 #define M_PI 3.14159265358979323846264338327
 #define MAX_BRIGHTNESS 255
@@ -302,8 +304,7 @@ void rgb2hsv(int H[1024][1024], float S[1024][1024], float V[1024][1024],
 	float temp, delta; 
 	float max, min;
 	float r, g, b;
-	int error=0;
-	for (int x = 0; x < width; x++) {
+	for (int x = 0; x < width; x++)
 		for (int y = 0; y < height; y++) {
 
 			//normalize
@@ -312,9 +313,9 @@ void rgb2hsv(int H[1024][1024], float S[1024][1024], float V[1024][1024],
 			b = (float)B[x][y]/255;
 
 			temp = (r >= g) ? r : g;
-			max = (temp >= b) ? temp : b;
+			max = (temp >= b) ? temp : b;  //max
 			temp = (r <= g) ? r : g;
-			min = (temp <= b) ? temp : b;
+			min = (temp <= b) ? temp : b;  //min
 			
 			V[x][y] = max;
 			delta = max - min;
@@ -333,16 +334,197 @@ void rgb2hsv(int H[1024][1024], float S[1024][1024], float V[1024][1024],
 				H[x][y] = round((b - r) / delta * 60) + 120;
 			else if (b == max)
 				H[x][y] = round((r - g) / delta * 60) + 240;
-			else
-				error++;
 		}
-	}
-	printf("rgb2hsv error: %d\n", error);
 }
 
-void erosion(int r[1024][1024], int R[1024][1024], int* structure, int width, int height, int size_x, int size_y) {
-	int x=0, y=0;
-	for (y = 0;y < size_y;y++)
-		for (x = 0; x < size_x;x++)
-			printf("%d\n", structure[x+y*size_x]);
-}		
+void Butterworth_LF(int r[1024][1024], int R[1024][1024],float D0,int n, int width, int height) {
+	int i, j, switch_temp;
+	int real[1024][1024] = { 0 };
+	int imaginary[1024][1024] = { 0 };
+	float D;
+	float Data[256 * 256 * 2] = { 0 };
+	float Mask[1024][1024] = { 0 };
+
+
+	//Create Mask
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			D = hypot(abs(i - 128), abs(j - 128));
+			Mask[i][j] = 1 / (1 + powf((D / D0), 2*n));
+		}
+
+
+	//2D to 1D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			Data[j * 256 * 2 + i * 2] = (float)R[i][j];
+			Data[j * 256 * 2 + i * 2 + 1] = 0;
+		}
+	fft2(Data, 256, 1);
+	//1-D to 2-D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			real[i][j] = (int)Data[j * 256 * 2 + i * 2];
+			imaginary[i][j] = (int)Data[j * 256 * 2 + i * 2 + 1];
+		}
+
+	//switch
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			if (i < width / 2 && j < height / 2) {
+				switch_temp = real[i][j];
+				real[i][j] = real[i + width / 2][j + height / 2];
+				real[i + width / 2][j + height / 2] = switch_temp;
+			}
+			else if ((i >= width / 2 && j < height / 2)) {
+				switch_temp = real[i][j];
+				real[i][j] = real[i - width / 2][j + height / 2];
+				real[i - width / 2][j + height / 2] = switch_temp;
+			}
+		}
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			if (i < width / 2 && j < height / 2) {
+				switch_temp = imaginary[i][j];
+				imaginary[i][j] = imaginary[i + width / 2][j + height / 2];
+				imaginary[i + width / 2][j + height / 2] = switch_temp;
+			}
+			else if ((i >= width / 2 && j < height / 2)) {
+				switch_temp = imaginary[i][j];
+				imaginary[i][j] = imaginary[i - width / 2][j + height / 2];
+				imaginary[i - width / 2][j + height / 2] = switch_temp;
+			}
+		}
+
+
+	//multiply
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			real[i][j] = (float)real[i][j] * Mask[i][j];
+			imaginary[i][j] = (float)imaginary[i][j] * Mask[i][j];
+		}
+
+	//2D to 1D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			Data[j * 256 * 2 + i * 2] = (float)real[i][j];
+			Data[j * 256 * 2 + i * 2 + 1] = (float)imaginary[i][j];
+		}
+	//fft inverse
+	fft2(Data, 256, -1);
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++)
+			r[i][j] = abs((int)Data[j * 256 * 2 + i * 2]);
+}
+void Butterworth_HF(int r[1024][1024], int R[1024][1024], float D0, int n, int width, int height) {
+	int i, j, switch_temp;
+	int real[1024][1024] = { 0 };
+	int imaginary[1024][1024] = { 0 };
+	float D;
+	float Data[256 * 256 * 2] = { 0 };
+	float Mask[1024][1024] = { 0 };
+
+
+	//Create Mask
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			D = hypot(abs(i - 128), abs(j - 128));
+			Mask[i][j] = 1 / (1 + powf((D0 / D), 2 * n));
+		}
+
+
+	//2D to 1D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			Data[j * 256 * 2 + i * 2] = (float)R[i][j];
+			Data[j * 256 * 2 + i * 2 + 1] = 0;
+		}
+	fft2(Data, 256, 1);
+	//1-D to 2-D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			real[i][j] = (int)Data[j * 256 * 2 + i * 2];
+			imaginary[i][j] = (int)Data[j * 256 * 2 + i * 2 + 1];
+		}
+
+	//switch
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			if (i < width / 2 && j < height / 2) {
+				switch_temp = real[i][j];
+				real[i][j] = real[i + width / 2][j + height / 2];
+				real[i + width / 2][j + height / 2] = switch_temp;
+			}
+			else if ((i >= width / 2 && j < height / 2)) {
+				switch_temp = real[i][j];
+				real[i][j] = real[i - width / 2][j + height / 2];
+				real[i - width / 2][j + height / 2] = switch_temp;
+			}
+		}
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			if (i < width / 2 && j < height / 2) {
+				switch_temp = imaginary[i][j];
+				imaginary[i][j] = imaginary[i + width / 2][j + height / 2];
+				imaginary[i + width / 2][j + height / 2] = switch_temp;
+			}
+			else if ((i >= width / 2 && j < height / 2)) {
+				switch_temp = imaginary[i][j];
+				imaginary[i][j] = imaginary[i - width / 2][j + height / 2];
+				imaginary[i - width / 2][j + height / 2] = switch_temp;
+			}
+		}
+
+
+	//multiply
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			real[i][j] = (float)real[i][j] * Mask[i][j];
+			imaginary[i][j] = (float)imaginary[i][j] * Mask[i][j];
+		}
+
+	//2D to 1D
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++) {
+			Data[j * 256 * 2 + i * 2] = (float)real[i][j];
+			Data[j * 256 * 2 + i * 2 + 1] = (float)imaginary[i][j];
+		}
+	//fft inverse
+	fft2(Data, 256, -1);
+	for (i = 0; i < width; i++)
+		for (j = 0; j < height; j++)
+			r[i][j] = abs((int)Data[j * 256 * 2 + i * 2]);
+}
+
+void dilation(int R[1024][1024], int width, int height) {
+	int temp[1024][1024] = { 0 };
+
+	for (int x = 1;x < width - 1;x++)
+		for (int y = 1; y < height - 1;y++) {
+			if (R[x][y] == 255){
+				temp[x - 1][y] = 255;
+				temp[x][y] = 255;
+				temp[x + 1][y] = 255;
+				temp[x][y - 1] = 255;
+				temp[x][y + 1] = 255;
+			}	
+		}
+	for (int x = 0;x < width;x++)
+		for (int y = 0; y < height;y++)
+			R[x][y] = temp[x][y];
+}
+
+
+
+void erosion(int R[1024][1024], int width, int height) {
+	int temp[1024][1024] = { 0 };
+	for (int x = 1;x < width - 1;x++)
+		for (int y = 1; y < height - 1;y++)
+			if (R[x - 1][y] == 255 && R[x][y] == 255 && R[x + 1][y] == 255 && R[x][y - 1] == 255 && R[x][y + 1] == 255)
+				temp[x][y] = 255;
+
+	for (int x = 0;x < width;x++)
+		for (int y = 0; y < height;y++)
+			R[x][y] = temp[x][y];
+}
+
