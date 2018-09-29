@@ -1,3 +1,3 @@
-DIP_Homework1
+NYUST_DIP_Homework
 ========
 yuntech dip homework
